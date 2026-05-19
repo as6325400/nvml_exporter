@@ -1,0 +1,30 @@
+[Unit]
+Description=NVML per-user GPU usage Prometheus exporter
+After=network-online.target nvidia-persistenced.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust the install path and Python interpreter as needed.
+ExecStart=/usr/bin/python3 /opt/nvml_exporter/nvml_user_exporter.py --port 9835 --addr 0.0.0.0
+Restart=on-failure
+RestartSec=5
+
+# Reading /proc/<pid>/status for arbitrary PIDs needs at least the same UID
+# or CAP_SYS_PTRACE-ish read access. Default Linux lets any user read most
+# fields, so running as 'nobody' usually works. If you see <gone> / uid:<n>
+# everywhere, drop the User= line to run as root.
+User=nobody
+Group=nogroup
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
