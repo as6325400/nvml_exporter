@@ -55,32 +55,46 @@ Special user labels:
 
 ## Install
 
+需要: Python 3.10+、NVIDIA driver with NVML。
+
+直接 clone 到 `/opt/nvml_exporter`,在裡面建一個 venv,然後啟用 systemd。
+一次 copy-paste 就好:
+
 ```bash
-git clone https://github.com/as6325400/nvml_exporter.git
-cd nvml_exporter
-uv venv
-uv pip install -r requirements.txt
+sudo git clone https://github.com/as6325400/nvml_exporter.git /opt/nvml_exporter
+cd /opt/nvml_exporter
+sudo python3 -m venv .venv
+sudo .venv/bin/pip install -r requirements.txt
+sudo cp systemd/nvml-user-exporter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now nvml-user-exporter
 ```
 
-之後執行可以用 `uv run python nvml_user_exporter.py ...`,或先 `source .venv/bin/activate` 再直接跑 `python`。
-
-需要:
-- Python 3.10+
-- NVIDIA driver with NVML
-- `/proc` 可讀 (default Linux 大多數 distro 都讓任意 user 讀 `/proc/<pid>/status`,
-  跑 nobody 就行;若一律解到 `<gone>`/`uid:<n>`,改成 root 跑)
-
-## Run
+驗證:
 
 ```bash
-python3 nvml_user_exporter.py --port 9835 --addr 0.0.0.0
+sudo systemctl status nvml-user-exporter --no-pager
+curl -s localhost:9835/metrics | grep nvml_user_gpu_
+```
+
+### 想先在前景測一下 (不裝 systemd)
+
+```bash
+sudo .venv/bin/python /opt/nvml_exporter/nvml_user_exporter.py --port 9835
+# 另一個 shell
 curl -s localhost:9835/metrics | grep nvml_
 ```
 
-CLI flags:
-- `--port` (default 9835)
-- `--addr` (default 0.0.0.0)
-- `--log-level` (default INFO; or env `LOG_LEVEL`)
+CLI flags: `--port` (預設 9835)、`--addr` (預設 0.0.0.0)、`--log-level` (預設 INFO)。
+
+### Debug
+
+service 啟動後 curl 沒東西 → 看
+`sudo journalctl -u nvml-user-exporter -n 30 --no-pager`,常見原因:
+- `status=203/EXEC` — `/opt/nvml_exporter/.venv/bin/python` 不存在 (venv 沒建好)
+- `ModuleNotFoundError: No module named 'pynvml'` — venv 裡沒裝依賴
+- Metrics 都出來但 `user` 全是 `<gone>` — `/proc` 有 `hidepid=2`,維持
+  `User=root` 即可 (default unit 已是 root)
 
 ## Prometheus scrape config
 
@@ -116,16 +130,16 @@ WSL2 上的 NVIDIA driver **不支援** `nvmlDeviceGetComputeRunningProcesses`,
 
 要拿到實際 per-user 數字必須跑在原生 Linux server 上。
 
-## Systemd
+## Grafana
 
-`systemd/nvml-user-exporter.service` 是 Linux server 部署用的範本。改一下
-`ExecStart` 路徑:
+`grafana/dashboard.json` 是一個現成的 dashboard,涵蓋:
+- Stat row: hosts up / GPU memory % / active users / total power / max temp
+- Device-level time series: SM util、memory used vs total、power、temperature
+- Per-user time series: top 10 user 的 GPU memory 與 SM util (stacked)
+- Per-user 即時 table: 每位 user × GPU 的 memory / process 數 / SM util
 
-```bash
-sudo cp systemd/nvml-user-exporter.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now nvml-user-exporter
-```
+匯入方式: Grafana UI → Dashboards → New → Import → Upload JSON file → 選 Prometheus
+datasource。Dashboard 提供 `Host` 與 `GPU` 兩個 multi-select 變數。
 
 ## Scope / 不做什麼
 

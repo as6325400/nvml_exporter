@@ -5,17 +5,20 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Adjust the install path and Python interpreter as needed.
-ExecStart=/usr/bin/python3 /opt/nvml_exporter/nvml_user_exporter.py --port 9835 --addr 0.0.0.0
+# Assumes the repo has been copied to /opt/nvml_exporter and a venv has been
+# created at /opt/nvml_exporter/.venv with deps installed (see README "Systemd").
+# If you keep the repo under /home/<user>/, change both paths below and remove
+# ProtectHome=true.
+ExecStart=/opt/nvml_exporter/.venv/bin/python /opt/nvml_exporter/nvml_user_exporter.py --port 9835 --addr 0.0.0.0
 Restart=on-failure
 RestartSec=5
 
-# Reading /proc/<pid>/status for arbitrary PIDs needs at least the same UID
-# or CAP_SYS_PTRACE-ish read access. Default Linux lets any user read most
-# fields, so running as 'nobody' usually works. If you see <gone> / uid:<n>
-# everywhere, drop the User= line to run as root.
-User=nobody
-Group=nogroup
+# Running as root is the safe default: resolving /proc/<pid>/status for
+# *other* users' PIDs may be blocked on distros that set hidepid=2 on /proc,
+# in which case 'nobody' would tag everything as <gone>. If your /proc is
+# permissive (hidepid=0), you can switch to User=nobody Group=nogroup for
+# defense in depth.
+User=root
 
 # Hardening
 NoNewPrivileges=true
