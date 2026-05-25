@@ -132,14 +132,18 @@ WSL2 上的 NVIDIA driver **不支援** `nvmlDeviceGetComputeRunningProcesses`,
 
 ## Grafana
 
-`grafana/dashboard.json` 是一個現成的 dashboard,涵蓋:
-- Stat row: hosts up / GPU memory % / active users / total power / max temp
-- Device-level time series: SM util、memory used vs total、power、temperature
-- Per-user time series: top 10 user 的 GPU memory 與 SM util (stacked)
-- Per-user 即時 table: 每位 user × GPU 的 memory / process 數 / SM util
+兩份 dashboard,搭配 drill-down 一起用:
 
-匯入方式: Grafana UI → Dashboards → New → Import → Upload JSON file → 選 Prometheus
-datasource。Dashboard 提供 `Host` 與 `GPU` 兩個 multi-select 變數。
+- **`grafana/cluster.json`** — cluster overview。一張表每台 host 一列
+  (GPUs / Mem Used / Mem % / Power / Max Temp / Active Users),點 Host 那欄
+  就會跳到該 node 的詳細 dashboard;上方還有 cluster 級的 stat 與時序圖
+- **`grafana/host.json`** — 單一 host 的 per-user 詳細頁。Drill-down 的目標,
+  也可以直接從上方 `Host` 下拉切換。包含 device-level 時序、per-user stacked
+  memory / SM util、與一個即時 per-user × GPU 的 table
+
+匯入順序:**先匯 `host.json`,再匯 `cluster.json`** (cluster 裡的連結指到
+host dashboard 的 uid `nvml-host-detail`,先存在連結才有效)。
+Grafana UI → Dashboards → New → Import → 選檔案 → 指到你的 Prometheus datasource。
 
 ## Scope / 不做什麼
 

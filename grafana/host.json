@@ -12,12 +12,25 @@
       }
     ]
   },
-  "description": "NVML per-user GPU usage exporter — device-level metrics plus per-Linux-user aggregation.",
+  "description": "NVML per-user GPU detail for a single host. Open via drill-down from the cluster overview or pick a host above.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Cluster overview",
+      "tooltip": "Back to the per-node cluster view",
+      "type": "link",
+      "url": "/d/nvml-cluster-overview"
+    }
+  ],
   "liveNow": false,
   "panels": [
     {
@@ -26,40 +39,27 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
       "id": 1,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "count(nvml_up{instance=~\"$instance\"} == 1)",
+          "expr": "nvml_up{instance=\"$instance\"}",
           "instant": true,
-          "legendFormat": "",
-          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Hosts Up",
+      "title": "Host Up",
       "type": "stat"
     },
     {
@@ -68,38 +68,24 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 70 },
-              { "color": "red", "value": 90 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] },
           "unit": "percent",
           "min": 0,
           "max": 100
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 4, "w": 5, "x": 4, "y": 0 },
       "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "100 * sum(nvml_gpu_memory_used_bytes{instance=~\"$instance\", gpu=~\"$gpu\"}) / sum(nvml_gpu_memory_total_bytes{instance=~\"$instance\", gpu=~\"$gpu\"})",
-          "legendFormat": "",
-          "range": true,
+          "expr": "100 * sum(nvml_gpu_memory_used_bytes{instance=\"$instance\", gpu=~\"$gpu\"}) / sum(nvml_gpu_memory_total_bytes{instance=\"$instance\", gpu=~\"$gpu\"})",
           "refId": "A"
         }
       ],
@@ -112,32 +98,22 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
           "unit": "none"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 4, "w": 5, "x": 9, "y": 0 },
       "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "count(count by (user) (nvml_user_gpu_memory_bytes{instance=~\"$instance\", gpu=~\"$gpu\", user!=\"<gone>\"} > 0))",
-          "legendFormat": "",
-          "range": true,
+          "expr": "count(count by (user) (nvml_user_gpu_memory_bytes{instance=\"$instance\", gpu=~\"$gpu\", user!=\"<gone>\"} > 0)) or vector(0)",
           "refId": "A"
         }
       ],
@@ -150,40 +126,26 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 200 },
-              { "color": "red", "value": 300 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 200 }, { "color": "red", "value": 300 }] },
           "unit": "watt"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
       "id": 4,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "sum(nvml_gpu_power_watts{instance=~\"$instance\", gpu=~\"$gpu\"})",
-          "legendFormat": "",
-          "range": true,
+          "expr": "sum(nvml_gpu_power_watts{instance=\"$instance\", gpu=~\"$gpu\"}) or vector(0)",
           "refId": "A"
         }
       ],
-      "title": "Total Power",
+      "title": "Host Power",
       "type": "stat"
     },
     {
@@ -192,36 +154,22 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 70 },
-              { "color": "red", "value": 85 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 85 }] },
           "unit": "celsius"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
       "id": 5,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": { "calcs": ["max"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "max(nvml_gpu_temperature_celsius{instance=~\"$instance\", gpu=~\"$gpu\"})",
-          "legendFormat": "",
-          "range": true,
+          "expr": "max(nvml_gpu_temperature_celsius{instance=\"$instance\", gpu=~\"$gpu\"})",
           "refId": "A"
         }
       ],
@@ -242,31 +190,21 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
+            "stacking": { "group": "A", "mode": "none" }
           },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "percentunit",
           "min": 0,
           "max": 1
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
       "id": 6,
@@ -277,10 +215,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "nvml_gpu_utilization_ratio{instance=~\"$instance\", gpu=~\"$gpu\"}",
-          "legendFormat": "{{instance}} GPU{{gpu}} {{name}}",
-          "range": true,
+          "expr": "nvml_gpu_utilization_ratio{instance=\"$instance\", gpu=~\"$gpu\"}",
+          "legendFormat": "GPU{{gpu}} {{name}}",
           "refId": "A"
         }
       ],
@@ -293,28 +229,19 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
+            "stacking": { "group": "A", "mode": "none" }
           },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "bytes"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
       "id": 7,
@@ -325,18 +252,14 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "nvml_gpu_memory_used_bytes{instance=~\"$instance\", gpu=~\"$gpu\"}",
-          "legendFormat": "{{instance}} GPU{{gpu}} used",
-          "range": true,
+          "expr": "nvml_gpu_memory_used_bytes{instance=\"$instance\", gpu=~\"$gpu\"}",
+          "legendFormat": "GPU{{gpu}} used",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "nvml_gpu_memory_total_bytes{instance=~\"$instance\", gpu=~\"$gpu\"}",
-          "legendFormat": "{{instance}} GPU{{gpu}} total",
-          "range": true,
+          "expr": "nvml_gpu_memory_total_bytes{instance=\"$instance\", gpu=~\"$gpu\"}",
+          "legendFormat": "GPU{{gpu}} total",
           "refId": "B"
         }
       ],
@@ -349,7 +272,6 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
             "drawStyle": "line",
             "fillOpacity": 10,
             "lineInterpolation": "linear",
@@ -362,8 +284,7 @@
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "watt"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
       "id": 8,
@@ -374,10 +295,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "nvml_gpu_power_watts{instance=~\"$instance\", gpu=~\"$gpu\"}",
-          "legendFormat": "{{instance}} GPU{{gpu}}",
-          "range": true,
+          "expr": "nvml_gpu_power_watts{instance=\"$instance\", gpu=~\"$gpu\"}",
+          "legendFormat": "GPU{{gpu}}",
           "refId": "A"
         }
       ],
@@ -390,7 +309,6 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
             "drawStyle": "line",
             "fillOpacity": 10,
             "lineInterpolation": "linear",
@@ -403,8 +321,7 @@
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "celsius"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
       "id": 9,
@@ -415,10 +332,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "nvml_gpu_temperature_celsius{instance=~\"$instance\", gpu=~\"$gpu\"}",
-          "legendFormat": "{{instance}} GPU{{gpu}}",
-          "range": true,
+          "expr": "nvml_gpu_temperature_celsius{instance=\"$instance\", gpu=~\"$gpu\"}",
+          "legendFormat": "GPU{{gpu}}",
           "refId": "A"
         }
       ],
@@ -430,7 +345,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
       "id": 101,
       "panels": [],
-      "title": "Per-user",
+      "title": "Per-user (on this host)",
       "type": "row"
     },
     {
@@ -439,7 +354,6 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
             "drawStyle": "line",
             "fillOpacity": 60,
             "lineInterpolation": "linear",
@@ -452,8 +366,7 @@
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "bytes"
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 21 },
       "id": 10,
@@ -464,10 +377,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "topk(10, sum by (user) (nvml_user_gpu_memory_bytes{instance=~\"$instance\", gpu=~\"$gpu\"}))",
+          "expr": "topk(10, sum by (user) (nvml_user_gpu_memory_bytes{instance=\"$instance\", gpu=~\"$gpu\"}))",
           "legendFormat": "{{user}}",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -480,7 +391,6 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisCenteredZero": false,
             "drawStyle": "line",
             "fillOpacity": 60,
             "lineInterpolation": "linear",
@@ -494,8 +404,7 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "percentunit",
           "min": 0
-        },
-        "overrides": []
+        }
       },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 21 },
       "id": 11,
@@ -506,10 +415,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "topk(10, sum by (user) (nvml_user_gpu_sm_utilization_ratio{instance=~\"$instance\", gpu=~\"$gpu\"}))",
+          "expr": "topk(10, sum by (user) (nvml_user_gpu_sm_utilization_ratio{instance=\"$instance\", gpu=~\"$gpu\"}))",
           "legendFormat": "{{user}}",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -521,11 +428,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "custom": {
-            "align": "auto",
-            "cellOptions": { "type": "auto" },
-            "inspect": false
-          },
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
@@ -563,64 +466,40 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "sum by (instance, gpu, user) (nvml_user_gpu_memory_bytes{instance=~\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "sum by (gpu, user) (nvml_user_gpu_memory_bytes{instance=\"$instance\", gpu=~\"$gpu\"})",
           "format": "table",
           "instant": true,
-          "legendFormat": "",
-          "range": false,
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "sum by (instance, gpu, user) (nvml_user_gpu_processes{instance=~\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "sum by (gpu, user) (nvml_user_gpu_processes{instance=\"$instance\", gpu=~\"$gpu\"})",
           "format": "table",
           "instant": true,
-          "legendFormat": "",
-          "range": false,
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "sum by (instance, gpu, user) (nvml_user_gpu_sm_utilization_ratio{instance=~\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "sum by (gpu, user) (nvml_user_gpu_sm_utilization_ratio{instance=\"$instance\", gpu=~\"$gpu\"})",
           "format": "table",
           "instant": true,
-          "legendFormat": "",
-          "range": false,
           "refId": "C"
         }
       ],
       "title": "Current per-user breakdown",
       "transformations": [
-        {
-          "id": "joinByField",
-          "options": { "byField": "user", "mode": "outer" }
-        },
+        { "id": "joinByField", "options": { "byField": "user", "mode": "outer" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true,
-              "Time 3": true,
-              "instance 2": true,
-              "instance 3": true,
-              "gpu 2": true,
-              "gpu 3": true
+              "Time": true, "Time 1": true, "Time 2": true, "Time 3": true,
+              "gpu 2": true, "gpu 3": true
             },
             "indexByName": {
-              "instance 1": 0,
-              "gpu 1": 1,
-              "user": 2,
-              "Value #A": 3,
-              "Value #B": 4,
-              "Value #C": 5
+              "gpu 1": 0, "user": 1, "Value #A": 2, "Value #B": 3, "Value #C": 4
             },
             "renameByName": {
-              "instance 1": "Host",
               "gpu 1": "GPU",
               "user": "User",
               "Value #A": "Memory",
@@ -653,13 +532,13 @@
         "type": "datasource"
       },
       {
-        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
+        "current": { "selected": false, "text": "", "value": "" },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
         "definition": "label_values(nvml_up, instance)",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Host",
-        "multi": true,
+        "multi": false,
         "name": "instance",
         "options": [],
         "query": {
@@ -675,7 +554,7 @@
       {
         "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-        "definition": "label_values(nvml_gpu_memory_total_bytes{instance=~\"$instance\"}, gpu)",
+        "definition": "label_values(nvml_gpu_memory_total_bytes{instance=\"$instance\"}, gpu)",
         "hide": 0,
         "includeAll": true,
         "label": "GPU",
@@ -683,7 +562,7 @@
         "name": "gpu",
         "options": [],
         "query": {
-          "query": "label_values(nvml_gpu_memory_total_bytes{instance=~\"$instance\"}, gpu)",
+          "query": "label_values(nvml_gpu_memory_total_bytes{instance=\"$instance\"}, gpu)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -697,8 +576,8 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "NVML Per-User GPU Exporter",
-  "uid": "nvml-user-exporter",
+  "title": "NVML GPU Host Detail",
+  "uid": "nvml-host-detail",
   "version": 1,
   "weekStart": ""
 }
