@@ -58,8 +58,11 @@ Special user labels:
 ```bash
 git clone https://github.com/as6325400/nvml_exporter.git
 cd nvml_exporter
-pip3 install --user -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
 ```
+
+之後執行可以用 `uv run python nvml_user_exporter.py ...`,或先 `source .venv/bin/activate` 再直接跑 `python`。
 
 需要:
 - Python 3.10+
