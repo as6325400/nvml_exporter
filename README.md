@@ -56,7 +56,8 @@ Special user labels:
 ## Install
 
 ```bash
-cd /home/as6325400/nvml_exporter
+git clone https://github.com/as6325400/nvml_exporter.git
+cd nvml_exporter
 pip3 install --user -r requirements.txt
 ```
 
