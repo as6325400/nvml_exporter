@@ -466,21 +466,21 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by (gpu, user) (nvml_user_gpu_memory_bytes{instance=\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "label_join(sum by (gpu, user) (nvml_user_gpu_memory_bytes{instance=\"$instance\", gpu=~\"$gpu\"}), \"key\", \"|\", \"user\", \"gpu\")",
           "format": "table",
           "instant": true,
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by (gpu, user) (nvml_user_gpu_processes{instance=\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "label_join(sum by (gpu, user) (nvml_user_gpu_processes{instance=\"$instance\", gpu=~\"$gpu\"}), \"key\", \"|\", \"user\", \"gpu\")",
           "format": "table",
           "instant": true,
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by (gpu, user) (nvml_user_gpu_sm_utilization_ratio{instance=\"$instance\", gpu=~\"$gpu\"})",
+          "expr": "label_join(sum by (gpu, user) (nvml_user_gpu_sm_utilization_ratio{instance=\"$instance\", gpu=~\"$gpu\"}), \"key\", \"|\", \"user\", \"gpu\")",
           "format": "table",
           "instant": true,
           "refId": "C"
@@ -488,20 +488,22 @@
       ],
       "title": "Current per-user breakdown",
       "transformations": [
-        { "id": "joinByField", "options": { "byField": "user", "mode": "outer" } },
+        { "id": "joinByField", "options": { "byField": "key", "mode": "outer" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true, "Time 1": true, "Time 2": true, "Time 3": true,
-              "gpu 2": true, "gpu 3": true
+              "key": true,
+              "gpu 2": true, "gpu 3": true,
+              "user 2": true, "user 3": true
             },
             "indexByName": {
-              "gpu 1": 0, "user": 1, "Value #A": 2, "Value #B": 3, "Value #C": 4
+              "gpu 1": 0, "user 1": 1, "Value #A": 2, "Value #B": 3, "Value #C": 4
             },
             "renameByName": {
               "gpu 1": "GPU",
-              "user": "User",
+              "user 1": "User",
               "Value #A": "Memory",
               "Value #B": "Processes",
               "Value #C": "SM Util"
