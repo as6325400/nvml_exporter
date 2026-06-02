@@ -1,0 +1,35 @@
+#!/bin/bash
+# gpu-docker — thin wrapper around `docker` that stamps every `docker run`
+# (and `container run`, `container create`, `create`) with a label identifying
+# the invoking user, so the nvml_user_exporter can attribute GPU usage back
+# to a real person.
+#
+# Install:
+#   sudo cp tools/gpu-docker /usr/local/bin/gpu-docker
+#   sudo chmod +x /usr/local/bin/gpu-docker
+# Then either alias `docker=gpu-docker` for users, or rename to /usr/local/bin/docker
+# and put the real one at /usr/bin/docker (PATH default already points there).
+
+set -e
+
+REAL_DOCKER="${REAL_DOCKER:-/usr/bin/docker}"
+USER_NAME="${SUDO_USER:-$USER}"
+LABEL="gpu.user=${USER_NAME}"
+
+# Detect which subcommand the user is invoking and inject --label only for the
+# ones that create a new container. Everything else passes through unchanged.
+case "$1 $2" in
+    "run "*|"create "*)
+        sub="$1"
+        shift
+        exec "$REAL_DOCKER" "$sub" --label "$LABEL" "$@"
+        ;;
+    "container run"|"container create")
+        sub1="$1"; sub2="$2"
+        shift 2
+        exec "$REAL_DOCKER" "$sub1" "$sub2" --label "$LABEL" "$@"
+        ;;
+    *)
+        exec "$REAL_DOCKER" "$@"
+        ;;
+esac

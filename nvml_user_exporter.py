@@ -8,15 +8,19 @@ utilization by the Linux user that owns each PID.
 from __future__ import annotations
 
 import argparse
+import http.client
+import json
 import logging
 import os
 import pwd
+import re
 import signal
+import socket
 import sys
 import time
 from collections import defaultdict
 from functools import lru_cache
-from typing import Iterable
+from typing import Iterable, Optional
 
 import pynvml
 from prometheus_client import REGISTRY, start_http_server
@@ -25,6 +29,17 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 log = logging.getLogger("nvml_user_exporter")
 
 UNKNOWN_USER = "<gone>"
+DOCKER_SOCK = "/var/run/docker.sock"
+
+# Matches docker / containerd / podman container IDs inside a cgroup path.
+# Examples that match (group 1 is the container ID):
+#   /system.slice/docker-7af3c2....scope
+#   /docker/7af3c2....
+#   /kubepods/.../cri-containerd-7af3c2....scope
+#   /machine.slice/libpod-7af3c2....scope
+_CGROUP_CID_RE = re.compile(
+    r'(?:docker[-/]|libpod-|cri-containerd-|containerd-)([0-9a-f]{12,64})(?:\.scope)?'
+)
 
 
 @lru_cache(maxsize=4096)
@@ -35,18 +50,120 @@ def _username_for_uid(uid: int) -> str:
         return f"uid:{uid}"
 
 
+@lru_cache(maxsize=4096)
+def container_id_for_pid(pid: int) -> Optional[str]:
+    """Look up the docker / containerd / podman container ID owning a PID, or None."""
+    try:
+        with open(f"/proc/{pid}/cgroup", "r") as fh:
+            for line in fh:
+                m = _CGROUP_CID_RE.search(line)
+                if m:
+                    return m.group(1)
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        pass
+    return None
+
+
+class DockerResolver:
+    """Looks up a container's effective 'user' via the Docker socket."""
+
+    def __init__(self, sock_path: str = DOCKER_SOCK) -> None:
+        self.sock_path = sock_path
+        self.enabled = os.path.exists(sock_path) and os.access(sock_path, os.R_OK | os.W_OK)
+        self._cache: dict[str, Optional[str]] = {}
+        self._warned = False
+        if not self.enabled:
+            log.warning(
+                "Docker socket %s not available / not readable - container detection disabled",
+                sock_path,
+            )
+
+    def _inspect(self, cid: str) -> Optional[dict]:
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(1.0)
+            sock.connect(self.sock_path)
+            conn = http.client.HTTPConnection("localhost", timeout=1.0)
+            conn.sock = sock
+            conn.request("GET", f"/containers/{cid}/json")
+            resp = conn.getresponse()
+            if resp.status != 200:
+                resp.read()
+                return None
+            return json.loads(resp.read())
+        except (OSError, json.JSONDecodeError, http.client.HTTPException) as e:
+            if not self._warned:
+                log.warning("Docker inspect failed (will keep trying): %s", e)
+                self._warned = True
+            return None
+        finally:
+            if sock is not None:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+
+    def user_for_container(self, cid: str) -> Optional[str]:
+        """Return a best-effort user label for a container, or None."""
+        if not self.enabled:
+            return None
+        if cid in self._cache:
+            return self._cache[cid]
+        info = self._inspect(cid)
+        result: Optional[str] = None
+        if info:
+            cfg = info.get("Config") or {}
+            labels = cfg.get("Labels") or {}
+            # Preferred: explicit label set by gpu-docker wrapper.
+            for k in ("gpu.user", "user", "owner", "maintainer"):
+                v = labels.get(k)
+                if v:
+                    result = v
+                    break
+            # Fallback: --user value if explicitly set.
+            if result is None and cfg.get("User"):
+                result = f"user:{cfg['User']}"
+            # Last resort: image name, so at least we know it's a container.
+            if result is None:
+                img = (cfg.get("Image") or "").split("/")[-1].split(":")[0]
+                if img:
+                    result = f"container:{img}"
+        self._cache[cid] = result
+        return result
+
+
+# Set in main() when --detect-containers is enabled.
+_DOCKER: Optional[DockerResolver] = None
+
+
 def resolve_user(pid: int) -> tuple[str, str]:
-    """Return (username, uid_str) for a PID. Reads /proc/<pid>/status."""
+    """Return (username, uid_str) for a PID. Reads /proc/<pid>/status.
+
+    When container detection is enabled and the host-side resolution lands on
+    root (uid 0), try to map the container to a real user via Docker labels.
+    The returned uid is preserved as "0" so the metric uid label stays truthful.
+    """
+    user = UNKNOWN_USER
+    uid_str = "-1"
     try:
         with open(f"/proc/{pid}/status", "r") as fh:
             for line in fh:
                 if line.startswith("Uid:"):
-                    # Uid: <real> <effective> <saved> <fs>
                     uid = int(line.split()[1])
-                    return _username_for_uid(uid), str(uid)
+                    user = _username_for_uid(uid)
+                    uid_str = str(uid)
+                    break
     except (FileNotFoundError, ProcessLookupError, PermissionError):
-        pass
-    return UNKNOWN_USER, "-1"
+        return user, uid_str
+
+    if _DOCKER is not None and uid_str == "0":
+        cid = container_id_for_pid(pid)
+        if cid is not None:
+            cu = _DOCKER.user_for_container(cid)
+            if cu:
+                return cu, "0"
+    return user, uid_str
 
 
 class NvmlCollector:
@@ -318,6 +435,20 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("LOG_LEVEL", "INFO"),
         help="Logging level (default: INFO)",
     )
+    p.add_argument(
+        "--detect-containers",
+        action="store_true",
+        help=(
+            "When a PID resolves to root, look up its Docker container and "
+            "use the container's 'gpu.user' label (or fallback to image name). "
+            "Requires read+write access to /var/run/docker.sock."
+        ),
+    )
+    p.add_argument(
+        "--docker-sock",
+        default=DOCKER_SOCK,
+        help=f"Path to Docker socket (default: {DOCKER_SOCK})",
+    )
     return p.parse_args()
 
 
@@ -354,6 +485,10 @@ def main() -> int:
     except pynvml.NVMLError:
         pass
     log.info("NVML initialized, driver=%s", driver)
+
+    if args.detect_containers:
+        global _DOCKER
+        _DOCKER = DockerResolver(args.docker_sock)
 
     REGISTRY.register(NvmlCollector())
     _install_signal_handlers()
