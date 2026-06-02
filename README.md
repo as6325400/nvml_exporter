@@ -1,5 +1,7 @@
 # NVML Per-User GPU Exporter
 
+[![CI](https://github.com/as6325400/nvml_exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/as6325400/nvml_exporter/actions/workflows/ci.yml)
+
 A Prometheus exporter built on NVIDIA's NVML library. Reports device-level GPU
 metrics and **aggregates GPU memory + utilization per Linux user** by mapping
 each NVML-reported PID back to its owner via `/proc/<pid>/status`.
